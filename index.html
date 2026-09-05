@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Playoff Bracket</title>
+<style>
+  :root {
+    --navy: #16181d;
+    --line: #b9bfcb;
+    --bg-card: #ffffff;
+    --bg-page: #f4f5f7;
+    --text-muted: #45494f;
+    --win-bg: #eaf3de;
+    --win-text: #1f4006;
+  }
+  html { color-scheme: light; background-color: var(--bg-page); min-height: 100%; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 20px 12px 56px;
+    background: var(--bg-page);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--navy);
+  }
+  h1 { text-align: center; font-size: 19px; font-weight: 600; margin: 0 0 4px; }
+  .subtitle { text-align: center; color: var(--text-muted); font-size: 12.5px; margin-bottom: 20px; }
+
+  .seed-panel {
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px; margin-bottom: 20px;
+  }
+  .seed-panel-title {
+    font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
+    margin-bottom: 10px; color: var(--navy);
+  }
+  .seed-row {
+    display: flex; align-items: center; gap: 10px; padding: 6px 0;
+    border-bottom: 1px solid #eef0f3;
+  }
+  .seed-row:last-of-type { border-bottom: none; }
+  .seed-badge {
+    flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--navy);
+    color: #fff; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center;
+  }
+  .seed-row select {
+    flex: 1; font-size: 15px; padding: 9px 8px; border-radius: 6px; border: 1px solid var(--line);
+    background: #fff; color: var(--navy); min-width: 0;
+  }
+  .seed-actions { display: flex; gap: 10px; margin-top: 12px; }
+  .btn {
+    flex: 1; border: none; border-radius: 8px; padding: 11px 12px; font-size: 14px; font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-secondary { background: #e7e9ee; color: var(--navy); }
+  .btn:active { opacity: 0.85; }
+  .seed-warning { font-size: 12px; color: #a15c00; margin-top: 8px; display: none; }
+
+  .toolbar { display: flex; justify-content: center; margin-bottom: 28px; }
+  .reset-btn { background: var(--navy); color: #fff; border: none; border-radius: 8px; padding: 10px 18px; font-size: 13.5px; cursor: pointer; }
+
+  .section-label {
+    font-size: 12.5px; font-weight: 600; color: var(--navy); text-transform: uppercase;
+    letter-spacing: 0.04em; margin: 32px 0 14px 2px; border-left: 3px solid var(--navy); padding-left: 8px;
+  }
+  .bracket {
+    display: flex; gap: 18px; overflow-x: auto; padding-bottom: 10px; margin: 0 -12px; padding-left: 12px; padding-right: 12px;
+    -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity;
+  }
+  .round { display: flex; flex-direction: column; justify-content: center; gap: 18px; min-width: 175px; flex-shrink: 0; scroll-snap-align: start; }
+  .round-title {
+    text-align: center; font-size: 10.5px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 2px;
+  }
+  .game { background: var(--bg-card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 9px; font-size: 12.5px; line-height: 1.45; }
+  .game .meta { color: var(--text-muted); font-size: 10.5px; margin-bottom: 5px; }
+  .team { display: flex; align-items: center; justify-content: space-between; padding: 7px 6px; border-radius: 5px; min-height: 30px; }
+  .team.top { border-bottom: 1px dashed var(--line); margin-bottom: 2px; }
+  .seed { color: var(--text-muted); font-size: 10.5px; margin-right: 4px; }
+  .tbd { color: var(--text-muted); font-style: italic; }
+  .clickable { cursor: pointer; }
+  .clickable:active { background: #dde3f3; }
+  .winner { background: var(--win-bg); color: var(--win-text); font-weight: 600; }
+  .final .game { border: 1.5px solid var(--navy); background: #eef1f8; }
+  .champion-banner { text-align: center; margin-top: 18px; font-size: 15px; font-weight: 600; color: var(--navy); min-height: 22px; }
+
+  @media (max-width: 420px) {
+    .bracket { gap: 12px; }
+    .round { min-width: 155px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Fall league playoffs</h1>
+<div class="subtitle">Double elimination · Sep 26–27, 2026 · tap a team to advance them</div>
+
+<div class="seed-panel">
+  <div class="seed-panel-title">Seeding</div>
+  <div id="seed-rows"></div>
+  <div class="seed-warning" id="seed-warning">Two seeds have the same team — fix before applying.</div>
+  <div class="seed-actions">
+    <button class="btn btn-secondary" onclick="renderSeedRows()">Revert</button>
+    <button class="btn btn-primary" onclick="applySeeding()">Apply seeding</button>
+  </div>
+</div>
+
+<div class="toolbar"><button class="reset-btn" onclick="resetAll()">Reset picks</button></div>
+
+<div class="section-label">Winners bracket</div>
+<div class="bracket" id="winners-bracket"></div>
+
+<div class="section-label">Consolation bracket</div>
+<div class="bracket" id="consolation-bracket"></div>
+
+<div class="champion-banner" id="champion-banner"></div>
+
+<script>
+let SEEDS = {
+  1: "Raptors Lime Lago", 2: "Hawk Orange Beck", 3: "Hawk White Varra", 4: "Hawk Blue Talafuse",
+  5: "Hawk Royal McCarron", 6: "Raptors Black Arredondo", 7: "Warrior Red Sizemore", 8: "Hawk Navy Crump"
+};
+const TEAM_POOL = Object.values(SEEDS);
+
+const GAMES = {
+  G1:  { meta: "Sat 9/26, 9:00 AM · ASP B1",  slots: [{seed:1},{seed:8}] },
+  G2:  { meta: "Sat 9/26, 10:30 AM · ASP B1", slots: [{seed:4},{seed:5}] },
+  G3:  { meta: "Sat 9/26, 9:00 AM · ASP B2",  slots: [{seed:2},{seed:7}] },
+  G4:  { meta: "Sat 9/26, 10:30 AM · ASP B2", slots: [{seed:3},{seed:6}] },
+  G7:  { meta: "Sat 9/26, 12:00 PM · ASP B1", slots: [{win:"G1"},{win:"G2"}] },
+  G8:  { meta: "Sat 9/26, 12:00 PM · ASP B2", slots: [{win:"G3"},{win:"G4"}] },
+  G5:  { meta: "Sat 9/26, 1:30 PM · ASP B1",  slots: [{lose:"G1"},{lose:"G2"}] },
+  G6:  { meta: "Sat 9/26, 1:30 PM · ASP B2",  slots: [{lose:"G3"},{lose:"G4"}] },
+  G11: { meta: "Sun 9/27, 10:30 AM · ASP B1", slots: [{win:"G7"},{win:"G8"}] },
+  G9:  { meta: "Sat 9/26, 3:00 PM · ASP B1",  slots: [{lose:"G8"},{win:"G5"}] },
+  G10: { meta: "Sat 9/26, 3:00 PM · ASP B2",  slots: [{lose:"G7"},{win:"G6"}] },
+  G12: { meta: "Sun 9/27, 9:00 AM · ASP B1",  slots: [{win:"G9"},{win:"G10"}] },
+  G13: { meta: "Sun 9/27, 12:00 PM · ASP B1", slots: [{lose:"G11"},{win:"G12"}] },
+  G14: { meta: "Sun 9/27, 1:30 PM · ASP B1",  slots: [{win:"G11"},{win:"G13"}] }
+};
+
+let winners = {};
+
+function resolveSlotName(slot) {
+  if ('seed' in slot) return SEEDS[slot.seed];
+  if ('win' in slot) {
+    if (winners[slot.win] === undefined) return null;
+    return resolveSlotName(GAMES[slot.win].slots[winners[slot.win]]);
+  }
+  if ('lose' in slot) {
+    if (winners[slot.lose] === undefined) return null;
+    return resolveSlotName(GAMES[slot.lose].slots[1 - winners[slot.lose]]);
+  }
+  return null;
+}
+
+function getDependents(id, visited) {
+  visited = visited || new Set();
+  for (const gid in GAMES) {
+    if (visited.has(gid)) continue;
+    const dependsOnId = GAMES[gid].slots.some(s => s.win === id || s.lose === id);
+    if (dependsOnId) { visited.add(gid); getDependents(gid, visited); }
+  }
+  return visited;
+}
+
+function setWinner(gameId, idx) {
+  const dependents = getDependents(gameId);
+  dependents.forEach(gid => delete winners[gid]);
+  winners[gameId] = idx;
+  render();
+}
+
+function resetAll() { winners = {}; render(); }
+
+function teamLabel(slot, name) {
+  if ('seed' in slot) return '<span class="seed">' + slot.seed + '</span>' + name;
+  return name;
+}
+
+function renderGame(gid) {
+  const g = GAMES[gid];
+  const names = [resolveSlotName(g.slots[0]), resolveSlotName(g.slots[1])];
+  const winIdx = winners[gid];
+  const otherKnown = names[0] !== null && names[1] !== null;
+  let rows = '';
+  for (let i = 0; i < 2; i++) {
+    const cls = ['team', i === 0 ? 'top' : ''];
+    let content;
+    if (names[i] === null) {
+      cls.push('tbd');
+      content = 'TBD';
+      rows += '<div class="' + cls.join(' ') + '">' + content + '</div>';
+      continue;
+    }
+    content = teamLabel(g.slots[i], names[i]);
+    if (winIdx === i) cls.push('winner');
+    if (otherKnown) {
+      cls.push('clickable');
+      rows += '<div class="' + cls.join(' ') + '" onclick="setWinner(\'' + gid + '\',' + i + ')">' + content + '</div>';
+    } else {
+      rows += '<div class="' + cls.join(' ') + '">' + content + '</div>';
+    }
+  }
+  return '<div class="game"><div class="meta">' + gid + ' · ' + g.meta + '</div>' + rows + '</div>';
+}
+
+function render() {
+  const winOrder = [
+    { title: 'Round 1', games: ['G1','G2','G3','G4'] },
+    { title: 'Round 2', games: ['G7','G8'] },
+    { title: 'Round 3', games: ['G11'] },
+    { title: 'Championship', games: ['G14'], final: true }
+  ];
+  const consOrder = [
+    { title: 'Round 2', games: ['G5','G6'] },
+    { title: 'Round 3', games: ['G9','G10'] },
+    { title: 'Round 4', games: ['G12'] },
+    { title: 'Round 5', games: ['G13'] }
+  ];
+
+  document.getElementById('winners-bracket').innerHTML = winOrder.map(col =>
+    '<div class="round' + (col.final ? ' final' : '') + '"><div class="round-title">' + col.title + '</div>' +
+    col.games.map(renderGame).join('') + '</div>'
+  ).join('');
+
+  document.getElementById('consolation-bracket').innerHTML = consOrder.map(col =>
+    '<div class="round"><div class="round-title">' + col.title + '</div>' +
+    col.games.map(renderGame).join('') + '</div>'
+  ).join('');
+
+  const champBanner = document.getElementById('champion-banner');
+  champBanner.textContent = winners['G14'] !== undefined
+    ? 'Champion: ' + resolveSlotName(GAMES['G14'].slots[winners['G14']])
+    : '';
+}
+
+function renderSeedRows() {
+  const container = document.getElementById('seed-rows');
+  let html = '';
+  for (let s = 1; s <= 8; s++) {
+    html += '<div class="seed-row"><div class="seed-badge">' + s + '</div><select id="seed-input-' + s + '">' +
+      TEAM_POOL.map(name => '<option value="' + name + '"' + (SEEDS[s] === name ? ' selected' : '') + '>' + name + '</option>').join('') +
+      '</select></div>';
+  }
+  container.innerHTML = html;
+  document.getElementById('seed-warning').style.display = 'none';
+}
+
+function applySeeding() {
+  const newSeeds = {};
+  const used = new Set();
+  let hasDupe = false;
+  for (let s = 1; s <= 8; s++) {
+    const val = document.getElementById('seed-input-' + s).value;
+    if (used.has(val)) hasDupe = true;
+    used.add(val);
+    newSeeds[s] = val;
+  }
+  document.getElementById('seed-warning').style.display = hasDupe ? 'block' : 'none';
+  if (hasDupe) return;
+  SEEDS = newSeeds;
+  winners = {};
+  render();
+}
+
+renderSeedRows();
+render();
+</script>
+</body>
+</html>
