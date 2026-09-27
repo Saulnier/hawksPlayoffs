@@ -112,7 +112,7 @@
 
 <script>
 const SEEDS = {
-  1: "Hawk Orange Beck", 2: "Hawk White Varra", 3: "Raptors Lime Lago", 4: "Hawk Blue Talafuse",
+  1: "Hawk Orange Beck", 2: "Hawk White Varra 🤰", 3: "Raptors Lime Lago", 4: "Hawk Blue Talafuse 💩",
   5: "Hawk Royal McCarron", 6: "Raptors Black Arredondo", 7: "Warrior Red Sizemore", 8: "Hawk Navy Crump"
 };
 
@@ -133,7 +133,43 @@ const GAMES = {
   G14: { meta: "Sun 9/27, 1:30 PM · ASP B1",  slots: [{win:"G11"},{win:"G13"}] }
 };
 
-let winners = {};
+// Actual completed results (index into each game's slots array).
+// These are locked in as fact and can't be tapped away.
+const RESULTS = {
+  G1: { winnerIdx: 0, score: "14–2" },
+  G2: { winnerIdx: 0, score: "17–3" },
+  G3: { winnerIdx: 0, score: "14–3" },
+  G4: { winnerIdx: 0, score: "1–0" },
+  G7: { winnerIdx: 1, score: "11–12" },
+  G8: { winnerIdx: 0, score: "10–6" },
+  G5: { winnerIdx: 1, score: "6–16" },
+  G6: { winnerIdx: 1, score: null },
+  G10: { winnerIdx: 0, score: "11–1" }
+};
+
+const STORAGE_KEY = "parkerHawksBracketPicks";
+
+function loadWinners() {
+  let stored = {};
+  try {
+    stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+  } catch (e) {
+    stored = {};
+  }
+  const base = {};
+  for (const gid in RESULTS) base[gid] = RESULTS[gid].winnerIdx;
+  return Object.assign({}, stored, base);
+}
+
+function saveWinners() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(winners));
+  } catch (e) {
+    // Storage unavailable (private browsing, etc.) - picks just won't persist.
+  }
+}
+
+let winners = loadWinners();
 
 function resolveSlotName(slot) {
   if ('seed' in slot) return SEEDS[slot.seed];
@@ -159,13 +195,20 @@ function getDependents(id, visited) {
 }
 
 function setWinner(gameId, idx) {
+  if (RESULTS[gameId]) return; // final results are locked, not tappable
   const dependents = getDependents(gameId);
-  dependents.forEach(gid => delete winners[gid]);
+  dependents.forEach(gid => { if (!RESULTS[gid]) delete winners[gid]; });
   winners[gameId] = idx;
+  saveWinners();
   render();
 }
 
-function resetAll() { winners = {}; render(); }
+function resetAll() {
+  winners = {};
+  for (const gid in RESULTS) winners[gid] = RESULTS[gid].winnerIdx;
+  saveWinners();
+  render();
+}
 
 function teamLabel(slot, name, isChampion) {
   const seedTag = ('seed' in slot) ? '<span class="seed">' + slot.seed + '</span>' : '';
@@ -177,6 +220,7 @@ function renderGame(gid, isFinal) {
   const g = GAMES[gid];
   const names = [resolveSlotName(g.slots[0]), resolveSlotName(g.slots[1])];
   const winIdx = winners[gid];
+  const locked = !!RESULTS[gid];
   const otherKnown = names[0] !== null && names[1] !== null;
   let rows = '';
   for (let i = 0; i < 2; i++) {
@@ -191,14 +235,18 @@ function renderGame(gid, isFinal) {
     const isChampion = isFinal && winIdx === i;
     content = teamLabel(g.slots[i], names[i], isChampion);
     if (winIdx === i) cls.push('winner');
-    if (otherKnown) {
+    if (otherKnown && !locked) {
       cls.push('clickable');
       rows += '<div class="' + cls.join(' ') + '" onclick="setWinner(\'' + gid + '\',' + i + ')">' + content + '</div>';
     } else {
       rows += '<div class="' + cls.join(' ') + '">' + content + '</div>';
     }
   }
-  return '<div class="game"><div class="meta">' + gid + ' · ' + g.meta + '</div>' + rows + '</div>';
+  const scoreText = locked ? (RESULTS[gid].score ? ' · Final ' + RESULTS[gid].score : ' · Final (score unknown)') : '';
+  const metaText = locked
+    ? gid + ' · ' + g.meta + scoreText
+    : gid + ' · ' + g.meta;
+  return '<div class="game"><div class="meta">' + metaText + '</div>' + rows + '</div>';
 }
 
 function render() {
