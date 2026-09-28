@@ -54,9 +54,6 @@
     .seed-grid { grid-template-columns: 1fr; }
   }
 
-  .toolbar { display: flex; justify-content: center; margin-bottom: 28px; }
-  .reset-btn { background: var(--navy); color: #fff; border: none; border-radius: 8px; padding: 10px 18px; font-size: 13.5px; cursor: pointer; }
-
   .section-label {
     font-size: 12.5px; font-weight: 600; color: var(--navy); text-transform: uppercase;
     letter-spacing: 0.04em; margin: 32px 0 14px 2px; border-left: 3px solid var(--navy); padding-left: 8px;
@@ -100,8 +97,6 @@
   <div class="lock-note">Locked — seeding is final and can't be changed here.</div>
 </div>
 
-<div class="toolbar"><button class="reset-btn" onclick="resetAll()">Reset picks</button></div>
-
 <div class="section-label">Winners bracket</div>
 <div class="bracket" id="winners-bracket"></div>
 
@@ -112,7 +107,7 @@
 
 <script>
 const SEEDS = {
-  1: "Hawk Orange Beck", 2: "Hawk White Varra 🤰", 3: "Raptors Lime Lago", 4: "Hawk Blue Talafuse 💩",
+  1: "Hawk Orange Beck", 2: "Hawk White Varra", 3: "Raptors Lime Lago", 4: "Hawk Blue Talafuse",
   5: "Hawk Royal McCarron", 6: "Raptors Black Arredondo", 7: "Warrior Red Sizemore", 8: "Hawk Navy Crump"
 };
 
@@ -143,8 +138,13 @@ const RESULTS = {
   G7: { winnerIdx: 1, score: "11–12" },
   G8: { winnerIdx: 0, score: "10–6" },
   G5: { winnerIdx: 1, score: "6–16" },
-  G6: { winnerIdx: 1, score: null },
-  G10: { winnerIdx: 0, score: "11–1" }
+  G6: { winnerIdx: 1, score: "2–14" },
+  G10: { winnerIdx: 0, score: "11–1" },
+  G9: { winnerIdx: 0, score: "13–3" },
+  G11: { winnerIdx: 1, score: "1–12" },
+  G12: { winnerIdx: 1, score: "2–5" },
+  G13: { winnerIdx: 1, score: "7–17" },
+  G14: { winnerIdx: 0, score: "12–7" }
 };
 
 const STORAGE_KEY = "parkerHawksBracketPicks";
@@ -199,13 +199,6 @@ function setWinner(gameId, idx) {
   const dependents = getDependents(gameId);
   dependents.forEach(gid => { if (!RESULTS[gid]) delete winners[gid]; });
   winners[gameId] = idx;
-  saveWinners();
-  render();
-}
-
-function resetAll() {
-  winners = {};
-  for (const gid in RESULTS) winners[gid] = RESULTS[gid].winnerIdx;
   saveWinners();
   render();
 }
